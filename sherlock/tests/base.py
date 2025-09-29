@@ -26,12 +26,12 @@ class SherlockBaseTest(unittest.TestCase):
         Nothing.
         """
 
-        #This ignores the ResourceWarning from an unclosed SSLSocket.
-        #TODO: Figure out how to fix the code so this is not needed.
-        warnings.simplefilter("ignore", ResourceWarning)
+        # ResourceWarning from unclosed SSLSocket has been fixed by properly closing sessions
 
         #Create object with all information about sites we are aware of.
-        sites = SitesInformation()
+        # Use local data file for testing
+        local_data_path = os.path.join(os.path.dirname(__file__), "..", "resources", "data.json")
+        sites = SitesInformation(local_data_path)
 
         #Create original dictionary from SitesInformation() object.
         #Eventually, the rest of the code will be updated to use the new object

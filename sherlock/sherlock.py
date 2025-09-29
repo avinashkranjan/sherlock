@@ -198,7 +198,6 @@ def sherlock(username, site_data, query_notify,
     session = SherlockFuturesSession(max_workers=max_workers,
                                      session=underlying_session)
 
-
     # Results from analysis of all sites
     results_total = {}
 
@@ -448,6 +447,11 @@ def sherlock(username, site_data, query_notify,
     # Notify caller that all queries are finished.
     query_notify.finish()
 
+    # Ensure session is properly closed to avoid ResourceWarning
+    session.close()
+    if hasattr(underlying_session, 'close'):
+        underlying_session.close()
+
     return results_total
 
 
@@ -474,6 +478,40 @@ def timeout_check(value):
     if timeout <= 0:
         raise ArgumentTypeError(f"Timeout '{value}' must be greater than 0.0s.")
     return timeout
+
+
+def proxy_check(value):
+    """Check Proxy URL Argument.
+
+    Checks proxy URL for validity.
+
+    Keyword Arguments:
+    value                  -- Proxy URL string to validate.
+
+    Return Value:
+    String containing the validated proxy URL.
+
+    NOTE:  Will raise an exception if the proxy URL is invalid.
+    """
+    from argparse import ArgumentTypeError
+    from urllib.parse import urlparse
+
+    if not value:
+        raise ArgumentTypeError("Proxy URL cannot be empty.")
+    
+    # Parse the URL to validate format
+    parsed = urlparse(value)
+    
+    # Check if scheme is supported
+    supported_schemes = ['http', 'https', 'socks4', 'socks5']
+    if parsed.scheme not in supported_schemes:
+        raise ArgumentTypeError(f"Proxy URL '{value}' must use one of the supported schemes: {', '.join(supported_schemes)}")
+    
+    # Check if hostname is present
+    if not parsed.hostname:
+        raise ArgumentTypeError(f"Proxy URL '{value}' must contain a valid hostname.")
+    
+    return value
 
 
 def main():
@@ -515,7 +553,7 @@ def main():
                         help="Limit analysis to just the listed sites. Add multiple options to specify more than one site."
                         )
     parser.add_argument("--proxy", "-p", metavar="PROXY_URL",
-                        action="store", dest="proxy", default=None,
+                        action="store", dest="proxy", type=proxy_check, default=None,
                         help="Make requests over a proxy. e.g. socks5://127.0.0.1:1080"
                         )
     parser.add_argument("--json", "-j", metavar="JSON_FILE",
@@ -572,7 +610,6 @@ def main():
 
 
     # Argument check
-    # TODO regex check on args.proxy
     if args.tor and (args.proxy is not None):
         raise Exception("Tor and Proxy cannot be set at the same time.")
 
